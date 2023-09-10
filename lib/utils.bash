@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for lsd.
 GH_REPO="https://github.com/lsd-rs/lsd"
 TOOL_NAME="lsd"
 TOOL_TEST="lsd --help"
@@ -31,18 +30,48 @@ list_github_tags() {
 }
 
 list_all_versions() {
-	# TODO: Adapt this. By default we simply list the tag names from GitHub releases.
-	# Change this function if lsd has other means of determining installable versions.
 	list_github_tags
 }
 
+get_arch() {
+	arch=$(uname -m | tr '[:upper:]' '[:lower:]')
+	case $arch in
+	arm64)
+		arch='aarch64'
+		;;
+	esac
+
+	echo "$arch"
+}
+
+get_platform() {
+	plat=$(uname | tr '[:upper:]' '[:lower:]')
+
+	case $plat in
+	darwin)
+		plat='apple-darwin'
+		;;
+	linux)
+		plat='unknown-linux-gnu'
+		;;
+	windows)
+		plat='pc-windows=msvc'
+		;;
+	esac
+
+	echo "$plat"
+}
+
 download_release() {
-	local version filename url
+	local version filename arch plat url
 	version="$1"
 	filename="$2"
+	arch=$(get_arch)
+	plat=$(get_platform)
 
-	# TODO: Adapt the release URL convention for lsd
-	url="$GH_REPO/archive/v${version}.tar.gz"
+	# Exmaple url:
+	# https://github.com/lsd-rs/lsd/releases/download/v1.0.0/lsd-v1.0.0-aarch64-apple-darwin.tar.gz
+	url="$GH_REPO/releases/download/v${version}/${TOOL_NAME}-v${version}-${arch}-${plat}.tar.gz"
 
 	echo "* Downloading $TOOL_NAME release $version..."
 	curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
@@ -61,7 +90,6 @@ install_version() {
 		mkdir -p "$install_path"
 		cp -r "$ASDF_DOWNLOAD_PATH"/* "$install_path"
 
-		# TODO: Assert lsd executable exists.
 		local tool_cmd
 		tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
 		test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
